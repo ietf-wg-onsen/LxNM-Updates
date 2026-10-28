@@ -150,7 +150,7 @@ Implementations of LxNM models in controllers required new functionalities which
   + ITU-T Y.1731 defines performance monitoring for Ethernet-based networks. L2NM {{?RFC9291}}
     does not natively include OAM specifics, and standardized support is required.
 
-* EVI identifier to differentiate from VPN-ID (GitHub issue #24)
+* EVI identifier to differentiate from VPN-ID (GitHub issue #22)
   + Each EVI maps to a specific EVPN service (e.g., a Layer 2 VPN bridging a particular VLAN
     across the EVPN fabric). An explicit EVI identifier should be added to the model to
     distinguish it from the VPN-ID.

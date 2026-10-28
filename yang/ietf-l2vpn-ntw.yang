@@ -1047,6 +1047,23 @@ module ietf-l2vpn-ntw {
                         description
                           "EVPN type.";
                       }
+                      leaf evi {
+                        type uint32;
+                        description
+                          "EVPN Instance (EVI) identifier on this VPN
+                           node.  An EVI maps a specific EVPN service
+                           (e.g., a Layer 2 VPN bridging a particular
+                           VLAN) to the EVPN instance configured on
+                           the PE.  The EVI is distinct from the
+                           VPN service identifier ('vpn-id').
+                           Implementations may use the EVI to
+                           auto-derive the RD and RTs of the EVPN
+                           instance.  The supported range of values
+                           is implementation specific.";
+                        reference
+                          "RFC 7432: BGP MPLS-Based Ethernet VPN,
+                                     Section 3";
+                      }
                       leaf service-interface-type {
                         type identityref {
                           base evpn-service-interface-type;
