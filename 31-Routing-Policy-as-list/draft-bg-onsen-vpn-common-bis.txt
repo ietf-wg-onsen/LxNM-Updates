@@ -1,0 +1,189 @@
+
+
+
+
+Operationalizing Network workgroup: WG Working Groupamp; SErvice abstractioNsO. G. D. Dios
+Internet-Draft                                                Telefonica
+Intended status: Informational                                S. Barguil
+Expires: 1 May 2027                                                Nokia
+                                                         28 October 2026
+
+
+         A Common YANG Data Model for Layer 2 and Layer 3 VPNs
+                  draft-bg-onsen-vpn-common-bis-latest
+
+Abstract
+
+   Several years have passed since the publication of the LxNM YANG data
+   models, which has since been widely adopted in the industry.
+   Implementations in network controllers have revealed gaps in {
+   {!RFC9181}}. This document updates the common YANG data models for L2
+   and L3 VPN provision to address those gaps.
+
+About This Document
+
+   This note is to be removed before publishing as an RFC.
+
+   The latest revision of this draft can be found at
+   https://sbarguil.github.io/LxNM-Updates/draft-bg-onsen-l3sm-l3nm-
+   bis.html.  Status information for this document may be found at
+   https://datatracker.ietf.org/doc/draft-bg-onsen-vpn-common-bis/.
+
+   Discussion of this document takes place on the Operationalizing
+   Network group: ONSENamp; SErvice abstractioNs Working Group mailing
+   list (mailto:onions@ietf.org), which is archived at
+   https://mailarchive.ietf.org/arch/browse/onions/.  Subscribe at
+   https://www.ietf.org/mailman/listinfo/onions/.
+
+   Source for this draft and an issue tracker can be found at
+   https://github.com/sbarguil/LxNM-Updates.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 1 May 2027.
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction
+   2.  Conventions and Definitions
+   3.  Changes to the VPN Common Module
+     3.1.  Multiple Routing Policies
+   4.  Operational Considerations
+   5.  Security Considerations
+   6.  IANA Considerations
+   7.  References
+     7.1.  Normative References
+     7.2.  Informative References
+   Acknowledgments
+   Authors' Addresses
+
+1.  Introduction
+
+   TODO Introduction
+
+2.  Conventions and Definitions
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in
+   BCP 14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+3.  Changes to the VPN Common Module
+
+3.1.  Multiple Routing Policies
+
+   The vpn-route-targets grouping defined in [RFC9181] includes a vpn-
+   policies container with two leaves, import-policy and export-policy.
+   Each leaf is defined as a single string, which restricts the operator
+   to referencing exactly one routing policy per direction (GitHub issue
+   #23).
+
+   Network devices commonly support an ordered list of import and export
+   routing policies per VRF, evaluated in the order in which they are
+   listed.  This revision changes import-policy and export-policy from
+   leaf to leaf-list, with ordered-by user so that the order provided by
+   the client is the order in which the policies are applied.
+
+   Both the L3NM [RFC9182] and the L2NM [RFC9291] use the vpn-route-
+   targets grouping and inherit this change.  This change is not
+   backward compatible in the strict YANG sense ([RFC7950], Section 11),
+   as the cardinality of the nodes changes from a single value to a
+   list.  Existing single-value configurations can be expressed as a
+   one-element list without semantic loss.
+
+4.  Operational Considerations
+
+   TBC per [I-D.opsarea-rfc5706bis].
+
+5.  Security Considerations
+
+   TODO Security
+
+6.  IANA Considerations
+
+   This document has no IANA actions.
+
+7.  References
+
+7.1.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/rfc/rfc2119>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
+
+   [RFC9181]  Barguil, S., Gonzalez de Dios, O., Ed., Boucadair, M.,
+              Ed., and Q. Wu, "A Common YANG Data Model for Layer 2 and
+              Layer 3 VPNs", RFC 9181, DOI 10.17487/RFC9181, February
+              2022, <https://www.rfc-editor.org/rfc/rfc9181>.
+
+7.2.  Informative References
+
+   [I-D.opsarea-rfc5706bis]
+              Claise, B., Clarke, J., Farrel, A., Barguil, S.,
+              Pignataro, C., and R. Chen, "Guidelines for Considering
+              Operations and Management in IETF Specifications", Work in
+              Progress, Internet-Draft, draft-opsarea-rfc5706bis-06, 20
+              October 2025, <https://datatracker.ietf.org/doc/html/
+              draft-opsarea-rfc5706bis-06>.
+
+   [RFC7950]  Bjorklund, M., Ed., "The YANG 1.1 Data Modeling Language",
+              RFC 7950, DOI 10.17487/RFC7950, August 2016,
+              <https://www.rfc-editor.org/rfc/rfc7950>.
+
+   [RFC9182]  Barguil, S., Gonzalez de Dios, O., Ed., Boucadair, M.,
+              Ed., Munoz, L., and A. Aguado, "A YANG Network Data Model
+              for Layer 3 VPNs", RFC 9182, DOI 10.17487/RFC9182,
+              February 2022, <https://www.rfc-editor.org/rfc/rfc9182>.
+
+   [RFC9291]  Boucadair, M., Ed., Gonzalez de Dios, O., Ed., Barguil,
+              S., and L. Munoz, "A YANG Network Data Model for Layer 2
+              VPNs", RFC 9291, DOI 10.17487/RFC9291, September 2022,
+              <https://www.rfc-editor.org/rfc/rfc9291>.
+
+Acknowledgments
+
+   TODO acknowledge.
+
+Authors' Addresses
+
+   Oscar Gonzalez de Dios
+   Telefonica
+   Email: oscar.gonzalezdedios@telefonica.com
+
+
+   Samier Barguil
+   Nokia
+   Email: samier.barguil_giraldo@nokia.com
