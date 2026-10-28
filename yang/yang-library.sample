@@ -7,7 +7,14 @@
         "namespace": "urn:ietf:params:xml:ns:yang:ietf-l3vpn-ntw",
         "revision": "",
         "conformance-type": "implement",
-        "feature": []		  
+        "feature": []
+      },
+      {
+        "name": "ietf-vpn-common",
+        "namespace": "urn:ietf:params:xml:ns:yang:ietf-vpn-common",
+        "revision": "",
+        "conformance-type": "implement",
+        "feature": []
       }
     ]
   }

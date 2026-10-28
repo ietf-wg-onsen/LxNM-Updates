@@ -119,6 +119,12 @@ informative:
      models can be used to operationalize Inter-AS VPN options (A, B,
      and C, as defined in {{?RFC4364}}) within the L3NM framework.
 
+   * **Multiple routing policies (GitHub issue #23):** The L3NM
+     allows only one import policy and one export policy per VPN
+     service or VPN node, while devices commonly support an ordered
+     list of routing policies per VRF. The `import-policy` and
+     `export-policy` nodes need to be changed to ordered lists.
+
 # Terminology
 
    {::boilerplate bcp14-tagged}
@@ -164,17 +170,17 @@ capabilities incrementally on a per-service basis.
 
 ## Non-Backward-Compatible Changes
 
-   The change of `import-policy` (and, where applicable,
-   `export-policy`) from a `leaf` to a `leaf-list` is **not**
+   The change of `import-policy` and `export-policy` (defined in
+   `ietf-vpn-common`) from a `leaf` to a `leaf-list` is **not**
    backward compatible in the strict YANG sense ({{?RFC7950}},
    Section 11). The cardinality of the node is altered, and the
    encoded form of the data changes from a single value to a list.
 
    Operationally, this means:
 
-   * Existing L3NM clients that encode `import-policy` as a single
-     string MUST be updated to encode it as a list, even when only
-     one policy is configured.
+   * Existing L3NM clients that encode `import-policy` or
+     `export-policy` as a single string MUST be updated to encode it
+     as a list, even when only one policy is configured.
    * Servers implementing this revision will not accept the
      single-value encoding produced by clients conformant with
      {{?RFC9182}}.
@@ -186,7 +192,7 @@ capabilities incrementally on a per-service basis.
 
    * The single-leaf form is too restrictive to represent common
      operator intent, where multiple ordered policies are applied to
-     a single VPN network access.
+     a single VPN service or VPN node.
    * The migration path is mechanical: existing single-value
      configurations can be expressed as a one-element list without
      semantic loss.
@@ -204,7 +210,8 @@ capabilities incrementally on a per-service basis.
    2. **Client update for non-backward-compatible nodes.** Update
       client encodings for the affected nodes (Section N.2) before
       provisioning new services that rely on the updated cardinality
-      or, in the case of `import-policy`, before any reconfiguration
+      or, in the case of `import-policy` and `export-policy`, before
+      any reconfiguration
       of the affected nodes on existing services.
 
    <check here -- confirm whether you want to include guidance for a
@@ -273,16 +280,19 @@ This document has no IANA actions.
    IPv6 LAN configuration under the VPN network access in the L3NM,
    so that BFD parameters can be specified per static route.
 
-## Multiple Routing Policies per VPN Network Access
+## Multiple Routing Policies per VPN Service and VPN Node
 
    The L3NM YANG data model {{?RFC9182}} allows an operator to associate
-   a routing policy with a VPN network access through the
-   `import-policy` and `export-policy` leaves. Each leaf is currently
+   routing policies with a VPN service and with a VPN node through the
+   `import-policy` and `export-policy` leaves of the `vpn-policies`
+   container. This container is defined in the `vpn-route-targets`
+   grouping of the `ietf-vpn-common` module {{?RFC9181}} and is used
+   under `vpn-targets`, per address family. Each leaf is currently
    defined as a single `string`, which restricts the operator to
    referencing exactly one policy per direction.
 
    In practice, network devices commonly support attaching multiple
-   routing policies to a service, evaluated in the order in which they
+   routing policies to a VRF, evaluated in the order in which they
    are listed. Modeling this as a single leaf forces operators to
    either collapse multiple intents into a single composite policy or
    maintain external orchestration to handle the per-service ordering
@@ -290,10 +300,25 @@ This document has no IANA actions.
    risk of configuration drift between the service model and the
    device.
 
-   This revision of the L3NM module changes the affected nodes from
-   `leaf` to `leaf-list`, allowing multiple routing policies to be
-   referenced per VPN network access while preserving evaluation
-   order.
+   This revision changes `import-policy` and `export-policy` from
+   `leaf` to a user-ordered `leaf-list` in the `ietf-vpn-common`
+   module, allowing multiple routing policies to be referenced per
+   VPN service and per VPN node while preserving evaluation order.
+   The L3NM inherits this change through the `vpn-route-targets`
+   grouping.
+
+   For example, the following JSON fragment associates three import
+   policies with a VPN node, to be applied in the order listed:
+
+~~~ json
+"vpn-policies": {
+  "import-policy": [
+    "POL-ALLOW-VOIP",
+    "POL-ALLOW-VIDEO",
+    "POL-DENY-UNKNOWN"
+  ]
+}
+~~~
 
 --- back
 
