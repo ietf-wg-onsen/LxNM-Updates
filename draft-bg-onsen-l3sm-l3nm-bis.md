@@ -88,16 +88,17 @@ informative:
      the VLAN 0 use case>
 
    * **Missing BGP intended configuration blocks (related to
-     Attachment Circuits):**
-     + There are several BGP configuration blocks required to manage
-       BGP-based services that are currently present in the AC model
-       but not in L3NM:
-       - BGP peer group creation
-       - BGP redistribution rules
-     + A pointer to an ACL for attaching a forwarding filter is also
-       missing. <check here — confirm whether this belongs as a
-       sub-bullet of BGP configuration blocks or as a separate bullet,
-       since ACLs are not strictly BGP-related>
+     Attachment Circuits, GitHub issue #5):** There are several BGP
+     configuration blocks required to manage BGP-based services that
+     are present in the Attachment Circuit (AC) models
+     {{?RFC9834}} {{?RFC9835}} but not in the L3NM:
+     + BGP peer group creation.
+     + BGP redistribution rules for route sources other than
+       connected routes.
+
+   * **Missing pointer to an ACL (GitHub issue #5):** A pointer to an
+     ACL for attaching a forwarding filter to a VPN network access is
+     present in the AC models but not in the L3NM.
 
    * **SRv6 support for L3VPN:** SRv6-based BGP services, including
      L3VPN, whose procedures are defined in {{?RFC9252}}. <check here
@@ -226,6 +227,279 @@ TODO Security
 This document has no IANA actions.
 
 # Overall Structure of the Enhanced L3NM Module
+
+## Alignment with the Attachment Circuit Models
+
+   The AC models {{?RFC9834}} {{?RFC9835}} include a set of BGP and
+   forwarding data nodes that are not available in the L3NM
+   {{?RFC9182}}. This section describes how these data nodes are added
+   to the L3NM. The new data nodes are aligned with the structure and
+   names used in {{?RFC9835}}, but they are defined in the
+   `ietf-l3vpn-ntw` module so that no dependency on the AC modules is
+   introduced.
+
+   All the changes in this section are backward compatible: the new
+   data nodes are optional, and the existing data nodes keep their
+   semantics.
+
+### BGP Peer Groups and Per-Neighbor Configuration
+
+   In the L3NM {{?RFC9182}}, the BGP parameters of a VPN network access
+   (e.g., `peer-as`, `bgp-timers`, or `authentication`) apply to all
+   the neighbors listed in the `neighbor` leaf-list. There is no way to
+   define a set of BGP parameters once and reuse it across several VPN
+   network accesses, as BGP peer groups allow on network devices, nor
+   to associate different parameters with different neighbors of the
+   same VPN network access.
+
+   Using several `routing-protocol` entries of type `bgp-routing` on
+   the same VPN network access is not a suitable workaround, as network
+   devices typically have a single BGP instance per VRF, in which
+   neighbors are associated with peer groups.
+
+   Aligned with {{?RFC9835}}, this revision introduces:
+
+   * A new grouping, `bgp-peer-group`, that contains the BGP session
+     parameters of a VPN network access as defined in {{?RFC9182}}.
+     This grouping does not define default values, so that a parameter
+     that is not configured at a given level can be inherited from
+     another level. The `bgp` container of the VPN network access uses
+     this grouping and refines it with the default values of
+     {{?RFC9182}}, so the behavior of that container is unchanged.
+   * A `peer-groups` container, with a list of named peer groups,
+     both at the VPN service level and at the VPN node level. Peer
+     groups defined at the VPN service level can be reused by all the
+     VPN nodes of the service. A peer group defined at the VPN node
+     level overrides a peer group with the same name defined at the
+     VPN service level.
+   * A `neighbors` container in the `bgp` container of the VPN network
+     access, with a list of BGP neighbors keyed by `remote-address`.
+     Each neighbor can reference a peer group (`peer-group`) and can
+     override any BGP parameter of the `bgp-peer-group` grouping.
+   * The `neighbor` leaf-list of {{?RFC9182}} is deprecated in favor of
+     the `neighbors` list.
+
+~~~
+  +--rw vpn-service* [vpn-id]
+     ...
+     +--rw peer-groups {vpn-common:rtg-bgp}?
+     |  +--rw peer-group* [name]
+     |     +--rw name                      string
+     |     +--rw description?              string
+     |     +--rw local-as?                 inet:as-number
+     |     +--rw peer-as?                  inet:as-number
+     |     +--rw address-family?           identityref
+     |     ...
+     +--rw vpn-nodes
+        +--rw vpn-node* [vpn-node-id]
+           ...
+           +--rw peer-groups {vpn-common:rtg-bgp}?
+           |  +--rw peer-group* [name]
+           |     ...
+           +--rw vpn-network-accesses
+              +--rw vpn-network-access* [id]
+                 ...
+                 +--rw routing-protocols
+                    +--rw routing-protocol* [id]
+                       ...
+                       +--rw bgp
+                          +--rw description?   string
+                          x--rw neighbor*      inet:ip-address
+                          +--rw neighbors
+                          |  +--rw neighbor* [remote-address]
+                          |     +--rw remote-address   inet:ip-address
+                          |     +--rw description?     string
+                          |     +--rw peer-group?      string
+                          |     +--rw local-as?        inet:as-number
+                          |     +--rw peer-as?         inet:as-number
+                          |     ...
+                          +--rw local-as?      inet:as-number
+                          +--rw peer-as?       inet:as-number
+                          ...
+~~~
+
+   The value of a BGP parameter for a neighbor listed in `neighbors` is
+   determined as follows:
+
+   1. If the parameter is configured for the neighbor, that value is
+      used.
+   2. Otherwise, if the peer group of the neighbor is defined at the
+      VPN node level and the parameter is configured in that peer
+      group, that value is used.
+   3. Otherwise, if the peer group of the neighbor is defined at the
+      VPN service level and the parameter is configured in that peer
+      group, that value is used.
+   4. Otherwise, the value of the `bgp` container of the VPN network
+      access (including its default values) is used.
+
+   The peer ASN has to be provided for each neighbor, either directly,
+   in the `bgp` container of the VPN network access, or by the peer
+   group of the neighbor. The neighbors listed in the deprecated
+   `neighbor` leaf-list keep the semantics of {{?RFC9182}}: they use
+   the parameters of the `bgp` container of the VPN network access,
+   and `peer-as` is required in that case.
+
+   <check here -- in {{?RFC9182}}, `peer-as` is mandatory in the
+   VPN network access. This revision relaxes it to allow the peer ASN
+   to be provided per neighbor or by a peer group. Confirm that the WG
+   agrees with this approach.>
+
+   For example, the following JSON fragment defines two peer groups at
+   the VPN service level and associates a different peer group with
+   each neighbor of a VPN network access. The second neighbor also
+   overrides the BGP hold time of its peer group:
+
+~~~ json
+"peer-groups": {
+  "peer-group": [
+    {
+      "name": "CE-GOLD",
+      "peer-as": 65010,
+      "address-family": "vpn-common:ipv4",
+      "bgp-timers": {
+        "keepalive": 10,
+        "hold-time": 30
+      }
+    },
+    {
+      "name": "CE-SILVER",
+      "peer-as": 65020,
+      "address-family": "vpn-common:ipv4"
+    }
+  ]
+},
+...
+"routing-protocol": [
+  {
+    "id": "1",
+    "type": "vpn-common:bgp-routing",
+    "bgp": {
+      "neighbors": {
+        "neighbor": [
+          {
+            "remote-address": "192.0.2.2",
+            "peer-group": "CE-GOLD"
+          },
+          {
+            "remote-address": "192.0.2.6",
+            "peer-group": "CE-SILVER",
+            "bgp-timers": {
+              "hold-time": 60
+            }
+          }
+        ]
+      }
+    }
+  }
+]
+~~~
+
+### BGP Redistribution Rules
+
+   The L3NM {{?RFC9182}} only supports the redistribution of connected
+   routes into BGP (`redistribute-connected`). Operators also need to
+   redistribute routes from other sources, such as static routes or
+   routes learned from an IGP, optionally filtered by a routing policy.
+
+   This revision adds a `redistribute` list to the `bgp-peer-group`
+   grouping. Therefore, it is available in the BGP peer groups, in the
+   `bgp` container of a VPN network access, and for each BGP neighbor.
+   Each entry identifies a routing protocol (using the
+   `routing-protocol-type` identities of {{!RFC9181}}) and an address
+   family, and can reference a routing policy to apply to the
+   redistributed routes:
+
+~~~
+  +--rw redistribute-connected* [address-family]
+  |  +--rw address-family    identityref
+  |  +--rw enable?           boolean
+  +--rw redistribute* [protocol address-family]
+  |  +--rw protocol          identityref
+  |  +--rw address-family    identityref
+  |  +--rw policy?           string
+~~~
+
+   The `redistribute-connected` list is kept for backward
+   compatibility. Enabling `redistribute-connected` for an address
+   family is equivalent to adding a `redistribute` entry with the
+   `direct-routing` protocol for that address family.
+
+   <check here -- confirm whether `redistribute-connected` should be
+   deprecated in favor of `redistribute`, and whether redistribution
+   should also be possible at the VPN node (VRF) level.>
+
+### ACL Pointer per VPN Network Access
+
+   The L3NM {{?RFC9182}} allows the service provider to declare
+   forwarding profiles (`forwarding-profile-identifier`) under
+   `vpn-profiles`, but there is no data node to apply such a profile
+   (e.g., an ACL acting as a forwarding filter) to a VPN network
+   access.
+
+   Similar to Section 5.9 of {{?RFC9835}}, this revision adds an
+   `access-control-list` container to the `service` container of the
+   VPN network access. It includes a list of ACL profiles, each of
+   which references a forwarding profile and indicates the direction
+   of the traffic to which it applies:
+
+~~~
+  +--rw vpn-network-access* [id]
+     ...
+     +--rw service
+        ...
+        +--rw access-control-list
+           +--rw acl-profiles
+              +--rw acl-profile* [forwarding-profile-ref]
+                 +--rw forwarding-profile-ref    leafref
+                 +--rw direction?                enumeration
+~~~
+
+   The `direction` leaf takes one of the following values:
+
+   * `site-to-wan`: From the customer site to the provider's network
+     (typically CE to PE, i.e., inbound on the PE).
+   * `wan-to-site`: From the provider's network to the customer site
+     (typically PE to CE, i.e., outbound on the PE).
+   * `both`: Both directions. This is the default value.
+
+   These values are the same as those used for the QoS profiles of the
+   VPN network access. They are defined as an enumeration in the
+   `ietf-l3vpn-ntw` module because the `qos-profile-direction`
+   identities of {{!RFC9181}} depend on the `qos` feature.
+
+   <check here -- consider defining a generic direction identity in
+   the `ietf-vpn-common` module, usable by both QoS and ACL
+   profiles.>
+
+   The `acl-profile` list is ordered by the user: when several ACL
+   profiles apply to the same direction, they are evaluated in the
+   order in which they are listed.
+
+   For example, the following JSON fragment applies an inbound ACL
+   profile and an ACL profile in both directions to a VPN network
+   access:
+
+~~~ json
+"service": {
+  "access-control-list": {
+    "acl-profiles": {
+      "acl-profile": [
+        {
+          "forwarding-profile-ref": "ACL-ANTI-SPOOFING",
+          "direction": "site-to-wan"
+        },
+        {
+          "forwarding-profile-ref": "ACL-MGMT-PROTECT"
+        }
+      ]
+    }
+  }
+}
+~~~
+
+   The definition of the ACLs themselves is out of the scope of the
+   L3NM. A forwarding profile identifier can, for example, be mapped
+   by the network controller to an ACL defined using {{?RFC8519}}.
 
 ## BFD parameterization of static routes
 
