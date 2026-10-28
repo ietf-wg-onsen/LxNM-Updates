@@ -203,6 +203,424 @@ module ietf-l3vpn-ntw {
 
   /* Groupings */
 
+  grouping bgp-peer-group {
+    description
+      "BGP session parameters that can be shared by a set of
+       BGP neighbors (i.e., a BGP peer group) or configured
+       for the BGP neighbors of a VPN network access.";
+    leaf local-as {
+      type inet:as-number;
+      description
+        "Indicates a local AS Number (ASN), if
+         an ASN distinct from the ASN configured
+         at the VPN node level is needed.";
+    }
+    leaf peer-as {
+      type inet:as-number;
+      description
+        "Indicates the customer's ASN when
+         the customer requests BGP routing.";
+    }
+    leaf address-family {
+      type identityref {
+        base vpn-common:address-family;
+      }
+      description
+        "This node contains the address families
+         to be activated.  'dual-stack' means
+         that both IPv4 and IPv6 will be
+         activated.";
+    }
+    leaf local-address {
+      type union {
+        type inet:ip-address;
+        type if:interface-ref;
+      }
+      description
+        "Sets the local IP address to use for
+         the BGP transport session.  This may be
+         expressed as either an IP address or a
+         reference to an interface.";
+    }
+    leaf multihop {
+      type uint8;
+      description
+        "Describes the number of IP hops allowed
+         between a given BGP neighbor and
+         the PE.";
+    }
+    leaf as-override {
+      type boolean;
+      default "false";
+      description
+        "Defines whether ASN override is
+         enabled, i.e., replacing the ASN of
+         the customer specified in the AS_PATH
+         attribute with the local ASN.";
+    }
+    leaf allow-own-as {
+      type uint8;
+      default "0";
+      description
+        "If set, specifies the maximum number of
+         occurrences of the provider's ASN that
+         are permitted within the AS_PATH
+         before it is rejected.";
+    }
+    leaf prepend-global-as {
+      type boolean;
+      default "false";
+      description
+        "In some situations, the ASN that is
+         provided at the VPN node level may be
+         distinct from the ASN configured at the
+         VPN network access level.  When such
+         ASNs are provided, they are both
+         prepended to the BGP route updates
+         for this access.  To disable that
+         behavior, 'prepend-global-as'
+         must be set to 'false'.  In such a
+         case, the ASN that is provided at
+         the VPN node level is not prepended
+         to the BGP route updates for
+         this access.";
+    }
+    leaf send-default-route {
+      type boolean;
+      default "false";
+      description
+        "Defines whether default routes can be
+         advertised to a peer.  If set, the
+         default routes are advertised to a
+         peer.";
+    }
+    leaf site-of-origin {
+      when "../address-family = 'vpn-common:ipv4' "
+         + "or 'vpn-common:dual-stack'" {
+        description
+          "Only applies if IPv4 is activated.";
+      }
+      type rt-types:route-origin;
+      description
+        "The Site of Origin attribute is encoded
+         as a Route Origin Extended Community.
+         It is meant to uniquely identify the
+         set of routes learned from a site via a
+         particular CE-PE connection and is used
+         to prevent routing loops.";
+      reference
+        "RFC 4364: BGP/MPLS IP Virtual Private
+                   Networks (VPNs), Section 7";
+    }
+    leaf ipv6-site-of-origin {
+      when "../address-family = 'vpn-common:ipv6' "
+         + "or 'vpn-common:dual-stack'" {
+        description
+          "Only applies if IPv6 is activated.";
+      }
+      type rt-types:ipv6-route-origin;
+      description
+        "The IPv6 Site of Origin attribute is
+         encoded as an IPv6 Route Origin
+         Extended Community.  It is meant to
+         uniquely identify the set of routes
+         learned from a site via VRF
+         information.";
+      reference
+        "RFC 5701: IPv6 Address Specific BGP
+                   Extended Community
+                   Attribute";
+    }
+    list redistribute-connected {
+      key "address-family";
+      description
+        "Indicates, per address family, the
+         policy to follow for connected
+         routes.";
+      leaf address-family {
+        type identityref {
+          base vpn-common:address-family;
+        }
+        description
+          "Indicates the address family.";
+      }
+      leaf enable {
+        type boolean;
+        description
+          "Enables the redistribution of
+           connected routes.";
+      }
+    }
+    list redistribute {
+      key "protocol address-family";
+      description
+        "Indicates, per routing protocol and address family,
+         the routes to be redistributed into BGP.";
+      leaf protocol {
+        type identityref {
+          base vpn-common:routing-protocol-type;
+        }
+        description
+          "The routing protocol (e.g., static, OSPF, or IS-IS)
+           whose routes are redistributed into BGP.";
+      }
+      leaf address-family {
+        type identityref {
+          base vpn-common:address-family;
+        }
+        description
+          "Indicates the address family.";
+      }
+      leaf policy {
+        type string;
+        description
+          "Identifies the routing policy that is applied to the
+           redistributed routes.  If no policy is provided, all
+           the routes of the protocol are redistributed.";
+      }
+    }
+    container bgp-max-prefix {
+      description
+        "Controls the behavior when a prefix
+         maximum is reached.";
+      leaf max-prefix {
+        type uint32;
+        default "5000";
+        description
+          "Indicates the maximum number of BGP
+           prefixes allowed in the BGP session.
+
+           It allows control of how many
+           prefixes can be received from a
+           neighbor.
+
+           If the limit is exceeded, the action
+           indicated in 'violate-action' will be
+           followed.";
+        reference
+          "RFC 4271: A Border Gateway Protocol 4
+                     (BGP-4), Section 8.2.2";
+      }
+      leaf warning-threshold {
+        type decimal64 {
+          fraction-digits 5;
+          range "0..100";
+        }
+        units "percent";
+        default "75";
+        description
+          "When this value is reached, a warning
+           notification will be triggered.";
+      }
+      leaf violate-action {
+        type enumeration {
+          enum warning {
+            description
+              "Only a warning message is sent to
+               the peer when the limit is
+               exceeded.";
+          }
+          enum discard-extra-paths {
+            description
+              "Discards extra paths when the
+               limit is exceeded.";
+          }
+          enum restart {
+            description
+              "The BGP session restarts after
+               the indicated time interval.";
+          }
+        }
+        description
+          "If the BGP neighbor 'max-prefix'
+           limit is reached, the action
+           indicated in 'violate-action'
+           will be followed.";
+      }
+      leaf restart-timer {
+        type uint32;
+        units "seconds";
+        description
+          "Time interval after which the BGP
+           session will be reestablished.";
+      }
+    }
+    container bgp-timers {
+      description
+        "Includes two BGP timers that can be
+         customized when building a VPN service
+         with BGP used as the CE-PE routing
+         protocol.";
+      leaf keepalive {
+        type uint16 {
+          range "0..21845";
+        }
+        units "seconds";
+        default "30";
+        description
+          "This timer indicates the KEEPALIVE
+           messages' frequency between a PE
+           and a BGP peer.
+
+           If set to '0', it indicates that
+           KEEPALIVE messages are disabled.
+
+           It is suggested that the maximum
+           time between KEEPALIVE messages be
+           one-third of the Hold Time
+           interval.";
+        reference
+          "RFC 4271: A Border Gateway Protocol 4
+                     (BGP-4), Section 4.4";
+      }
+      leaf hold-time {
+        type uint16 {
+          range "0 | 3..65535";
+        }
+        units "seconds";
+        default "90";
+        description
+          "Indicates the maximum number of
+           seconds that may elapse between the
+           receipt of successive KEEPALIVE
+           and/or UPDATE messages from the peer.
+
+           The Hold Time must be either zero or
+           at least three seconds.";
+        reference
+          "RFC 4271: A Border Gateway Protocol 4
+                     (BGP-4), Section 4.2";
+      }
+    }
+    container authentication {
+      description
+        "Container for BGP authentication
+         parameters between a PE and a CE.";
+      leaf enable {
+        type boolean;
+        default "false";
+        description
+          "Enables or disables authentication.";
+      }
+      container keying-material {
+        when "../enable = 'true'";
+        description
+          "Container for describing how a BGP
+           routing session is to be secured
+           between a PE and a CE.";
+        choice option {
+          description
+            "Choice of authentication options.";
+          case ao {
+            description
+              "Uses the TCP Authentication
+               Option (TCP-AO).";
+            reference
+              "RFC 5925: The TCP Authentication
+                         Option";
+            leaf enable-ao {
+              type boolean;
+              description
+                "Enables the TCP-AO.";
+            }
+            leaf ao-keychain {
+              type key-chain:key-chain-ref;
+              description
+                "Reference to the TCP-AO key
+                 chain.";
+              reference
+                "RFC 8177: YANG Data Model for
+                           Key Chains";
+            }
+          }
+          case md5 {
+            description
+              "Uses MD5 to secure the session.";
+            reference
+              "RFC 4364: BGP/MPLS IP Virtual
+                         Private Networks
+                         (VPNs), Section 13.2";
+            leaf md5-keychain {
+              type key-chain:key-chain-ref;
+              description
+                "Reference to the MD5 key
+                 chain.";
+              reference
+                "RFC 8177: YANG Data Model for
+                           Key Chains";
+            }
+          }
+          case explicit {
+            leaf key-id {
+              type uint32;
+              description
+                "Key identifier.";
+            }
+            leaf key {
+              type string;
+              description
+                "BGP authentication key.
+                 This model only supports the
+                 subset of keys that are
+                 representable as ASCII
+                 strings.";
+            }
+            leaf crypto-algorithm {
+              type identityref {
+                base key-chain:crypto-algorithm;
+              }
+              description
+                "Indicates the cryptographic
+                 algorithm associated with the
+                 key.";
+            }
+          }
+          case ipsec {
+            description
+              "Specifies a reference to an
+               Internet Key Exchange Protocol
+               (IKE) Security Association
+               (SA).";
+            leaf sa {
+              type string;
+              description
+                "Indicates the
+                 administrator-assigned name
+                 of the SA.";
+            }
+          }
+        }
+      }
+    }
+  }
+
+  grouping bgp-peer-groups {
+    description
+      "Grouping for a list of BGP peer groups.";
+    container peer-groups {
+      if-feature "vpn-common:rtg-bgp";
+      description
+        "Container for BGP peer groups.";
+      list peer-group {
+        key "name";
+        description
+          "List of BGP peer groups uniquely identified by a
+           name.";
+        leaf name {
+          type string;
+          description
+            "Name of the BGP peer group.";
+        }
+        leaf description {
+          type string;
+          description
+            "Textual description of the BGP peer group.";
+        }
+        uses bgp-peer-group;
+      }
+    }
+  }
+
   grouping vpn-instance-profile {
     description
       "Grouping for data nodes that may be factorized
@@ -633,6 +1051,12 @@ module ietf-l3vpn-ntw {
             }
           }
         }
+        uses bgp-peer-groups {
+          description
+            "BGP peer groups defined at the VPN service level.
+             These peer groups can be referenced by the VPN
+             network accesses of any VPN node of the service.";
+        }
         container vpn-nodes {
           description
             "Container for VPN nodes.";
@@ -669,6 +1093,13 @@ module ietf-l3vpn-ntw {
                 "A 32-bit number in the dotted-quad format that is
                  used to uniquely identify a node within an AS.
                  This identifier is used for both IPv4 and IPv6.";
+            }
+            uses bgp-peer-groups {
+              description
+                "BGP peer groups defined at the VPN node level.  A
+                 peer group defined at this level overrides a peer
+                 group with the same name defined at the VPN
+                 service level.";
             }
             container active-vpn-instance-profiles {
               description
@@ -1602,6 +2033,11 @@ module ietf-l3vpn-ntw {
                           "Only applies when the protocol is
                            BGP.";
                       }
+                      must "peer-as or peer-group" {
+                        error-message
+                          "Either 'peer-as' or a BGP peer group must be
+                           provided.";
+                      }
                       description
                         "Configuration specific to BGP.";
                       leaf description {
@@ -1615,40 +2051,22 @@ module ietf-l3vpn-ntw {
                            of the description is local to an
                            implementation.";
                       }
-                      leaf local-as {
-                        type inet:as-number;
-                        description
-                          "Indicates a local AS Number (ASN), if
-                           an ASN distinct from the ASN configured
-                           at the VPN node level is needed.";
-                      }
-                      leaf peer-as {
-                        type inet:as-number;
-                        mandatory true;
-                        description
-                          "Indicates the customer's ASN when
-                           the customer requests BGP routing.";
-                      }
-                      leaf address-family {
-                        type identityref {
-                          base vpn-common:address-family;
+                      leaf peer-group {
+                        type string;
+                        must "../../../../../../peer-groups/peer-group[name = current()]"
+                           + " or ../../../../../../../../peer-groups"
+                           + "/peer-group[name = current()]" {
+                          error-message
+                            "The BGP peer group must be defined at the VPN
+                             node or the VPN service level.";
                         }
                         description
-                          "This node contains the address families
-                           to be activated.  'dual-stack' means
-                           that both IPv4 and IPv6 will be
-                           activated.";
-                      }
-                      leaf local-address {
-                        type union {
-                          type inet:ip-address;
-                          type if:interface-ref;
-                        }
-                        description
-                          "Sets the local IP address to use for
-                           the BGP transport session.  This may be
-                           expressed as either an IP address or a
-                           reference to an interface.";
+                          "The BGP peer group to which the BGP neighbors of
+                           this VPN network access belong.  The peer group
+                           is first looked up at the VPN node level, then at
+                           the VPN service level.  A parameter configured
+                           in this container overrides the value of the
+                           peer group.";
                       }
                       leaf-list neighbor {
                         type inet:ip-address;
@@ -1658,328 +2076,7 @@ module ietf-l3vpn-ntw {
                            indicated if two sessions will be used
                            for IPv4 and IPv6.";
                       }
-                      leaf multihop {
-                        type uint8;
-                        description
-                          "Describes the number of IP hops allowed
-                           between a given BGP neighbor and
-                           the PE.";
-                      }
-                      leaf as-override {
-                        type boolean;
-                        default "false";
-                        description
-                          "Defines whether ASN override is
-                           enabled, i.e., replacing the ASN of
-                           the customer specified in the AS_PATH
-                           attribute with the local ASN.";
-                      }
-                      leaf allow-own-as {
-                        type uint8;
-                        default "0";
-                        description
-                          "If set, specifies the maximum number of
-                           occurrences of the provider's ASN that
-                           are permitted within the AS_PATH
-                           before it is rejected.";
-                      }
-                      leaf prepend-global-as {
-                        type boolean;
-                        default "false";
-                        description
-                          "In some situations, the ASN that is
-                           provided at the VPN node level may be
-                           distinct from the ASN configured at the
-                           VPN network access level.  When such
-                           ASNs are provided, they are both
-                           prepended to the BGP route updates
-                           for this access.  To disable that
-                           behavior, 'prepend-global-as'
-                           must be set to 'false'.  In such a
-                           case, the ASN that is provided at
-                           the VPN node level is not prepended
-                           to the BGP route updates for
-                           this access.";
-                      }
-                      leaf send-default-route {
-                        type boolean;
-                        default "false";
-                        description
-                          "Defines whether default routes can be
-                           advertised to a peer.  If set, the
-                           default routes are advertised to a
-                           peer.";
-                      }
-                      leaf site-of-origin {
-                        when "../address-family = 'vpn-common:ipv4' "
-                           + "or 'vpn-common:dual-stack'" {
-                          description
-                            "Only applies if IPv4 is activated.";
-                        }
-                        type rt-types:route-origin;
-                        description
-                          "The Site of Origin attribute is encoded
-                           as a Route Origin Extended Community.
-                           It is meant to uniquely identify the
-                           set of routes learned from a site via a
-                           particular CE-PE connection and is used
-                           to prevent routing loops.";
-                        reference
-                          "RFC 4364: BGP/MPLS IP Virtual Private
-                                     Networks (VPNs), Section 7";
-                      }
-                      leaf ipv6-site-of-origin {
-                        when "../address-family = 'vpn-common:ipv6' "
-                           + "or 'vpn-common:dual-stack'" {
-                          description
-                            "Only applies if IPv6 is activated.";
-                        }
-                        type rt-types:ipv6-route-origin;
-                        description
-                          "The IPv6 Site of Origin attribute is
-                           encoded as an IPv6 Route Origin
-                           Extended Community.  It is meant to
-                           uniquely identify the set of routes
-                           learned from a site via VRF
-                           information.";
-                        reference
-                          "RFC 5701: IPv6 Address Specific BGP
-                                     Extended Community
-                                     Attribute";
-                      }
-                      list redistribute-connected {
-                        key "address-family";
-                        description
-                          "Indicates, per address family, the
-                           policy to follow for connected
-                           routes.";
-                        leaf address-family {
-                          type identityref {
-                            base vpn-common:address-family;
-                          }
-                          description
-                            "Indicates the address family.";
-                        }
-                        leaf enable {
-                          type boolean;
-                          description
-                            "Enables the redistribution of
-                             connected routes.";
-                        }
-                      }
-                      container bgp-max-prefix {
-                        description
-                          "Controls the behavior when a prefix
-                           maximum is reached.";
-                        leaf max-prefix {
-                          type uint32;
-                          default "5000";
-                          description
-                            "Indicates the maximum number of BGP
-                             prefixes allowed in the BGP session.
-
-                             It allows control of how many
-                             prefixes can be received from a
-                             neighbor.
-
-                             If the limit is exceeded, the action
-                             indicated in 'violate-action' will be
-                             followed.";
-                          reference
-                            "RFC 4271: A Border Gateway Protocol 4
-                                       (BGP-4), Section 8.2.2";
-                        }
-                        leaf warning-threshold {
-                          type decimal64 {
-                            fraction-digits 5;
-                            range "0..100";
-                          }
-                          units "percent";
-                          default "75";
-                          description
-                            "When this value is reached, a warning
-                             notification will be triggered.";
-                        }
-                        leaf violate-action {
-                          type enumeration {
-                            enum warning {
-                              description
-                                "Only a warning message is sent to
-                                 the peer when the limit is
-                                 exceeded.";
-                            }
-                            enum discard-extra-paths {
-                              description
-                                "Discards extra paths when the
-                                 limit is exceeded.";
-                            }
-                            enum restart {
-                              description
-                                "The BGP session restarts after
-                                 the indicated time interval.";
-                            }
-                          }
-                          description
-                            "If the BGP neighbor 'max-prefix'
-                             limit is reached, the action
-                             indicated in 'violate-action'
-                             will be followed.";
-                        }
-                        leaf restart-timer {
-                          type uint32;
-                          units "seconds";
-                          description
-                            "Time interval after which the BGP
-                             session will be reestablished.";
-                        }
-                      }
-                      container bgp-timers {
-                        description
-                          "Includes two BGP timers that can be
-                           customized when building a VPN service
-                           with BGP used as the CE-PE routing
-                           protocol.";
-                        leaf keepalive {
-                          type uint16 {
-                            range "0..21845";
-                          }
-                          units "seconds";
-                          default "30";
-                          description
-                            "This timer indicates the KEEPALIVE
-                             messages' frequency between a PE
-                             and a BGP peer.
-
-                             If set to '0', it indicates that
-                             KEEPALIVE messages are disabled.
-
-                             It is suggested that the maximum
-                             time between KEEPALIVE messages be
-                             one-third of the Hold Time
-                             interval.";
-                          reference
-                            "RFC 4271: A Border Gateway Protocol 4
-                                       (BGP-4), Section 4.4";
-                        }
-                        leaf hold-time {
-                          type uint16 {
-                            range "0 | 3..65535";
-                          }
-                          units "seconds";
-                          default "90";
-                          description
-                            "Indicates the maximum number of
-                             seconds that may elapse between the
-                             receipt of successive KEEPALIVE
-                             and/or UPDATE messages from the peer.
-
-                             The Hold Time must be either zero or
-                             at least three seconds.";
-                          reference
-                            "RFC 4271: A Border Gateway Protocol 4
-                                       (BGP-4), Section 4.2";
-                        }
-                      }
-                      container authentication {
-                        description
-                          "Container for BGP authentication
-                           parameters between a PE and a CE.";
-                        leaf enable {
-                          type boolean;
-                          default "false";
-                          description
-                            "Enables or disables authentication.";
-                        }
-                        container keying-material {
-                          when "../enable = 'true'";
-                          description
-                            "Container for describing how a BGP
-                             routing session is to be secured
-                             between a PE and a CE.";
-                          choice option {
-                            description
-                              "Choice of authentication options.";
-                            case ao {
-                              description
-                                "Uses the TCP Authentication
-                                 Option (TCP-AO).";
-                              reference
-                                "RFC 5925: The TCP Authentication
-                                           Option";
-                              leaf enable-ao {
-                                type boolean;
-                                description
-                                  "Enables the TCP-AO.";
-                              }
-                              leaf ao-keychain {
-                                type key-chain:key-chain-ref;
-                                description
-                                  "Reference to the TCP-AO key
-                                   chain.";
-                                reference
-                                  "RFC 8177: YANG Data Model for
-                                             Key Chains";
-                              }
-                            }
-                            case md5 {
-                              description
-                                "Uses MD5 to secure the session.";
-                              reference
-                                "RFC 4364: BGP/MPLS IP Virtual
-                                           Private Networks
-                                           (VPNs), Section 13.2";
-                              leaf md5-keychain {
-                                type key-chain:key-chain-ref;
-                                description
-                                  "Reference to the MD5 key
-                                   chain.";
-                                reference
-                                  "RFC 8177: YANG Data Model for
-                                             Key Chains";
-                              }
-                            }
-                            case explicit {
-                              leaf key-id {
-                                type uint32;
-                                description
-                                  "Key identifier.";
-                              }
-                              leaf key {
-                                type string;
-                                description
-                                  "BGP authentication key.
-                                   This model only supports the
-                                   subset of keys that are
-                                   representable as ASCII
-                                   strings.";
-                              }
-                              leaf crypto-algorithm {
-                                type identityref {
-                                  base key-chain:crypto-algorithm;
-                                }
-                                description
-                                  "Indicates the cryptographic
-                                   algorithm associated with the
-                                   key.";
-                              }
-                            }
-                            case ipsec {
-                              description
-                                "Specifies a reference to an
-                                 Internet Key Exchange Protocol
-                                 (IKE) Security Association
-                                 (SA).";
-                              leaf sa {
-                                type string;
-                                description
-                                  "Indicates the
-                                   administrator-assigned name
-                                   of the SA.";
-                              }
-                            }
-                          }
-                        }
-                      }
+                      uses bgp-peer-group;
                       uses vpn-common:service-status;
                     }
                     container ospf {
@@ -3058,6 +3155,35 @@ module ietf-l3vpn-ntw {
                                      Section 4.3.2";
                       }
                       uses vpn-common:service-status;
+                    }
+                  }
+                  container access-control-list {
+                    description
+                      "Container for the Access Control Lists (ACLs) to apply
+                       to the VPN network access.";
+                    container acl-profiles {
+                      description
+                        "Container for the ACL profiles.";
+                      list acl-profile {
+                        key "forwarding-profile-ref";
+                        description
+                          "List of ACL profiles to apply to the VPN network
+                           access.  Each ACL profile is a forwarding profile
+                           that is defined by the service provider.";
+                        reference
+                          "RFC 9835: A Network YANG Data Model for Attachment
+                                     Circuits, Section 5.9";
+                        leaf forwarding-profile-ref {
+                          type leafref {
+                            path "/l3vpn-ntw/vpn-profiles"
+                               + "/valid-provider-identifiers"
+                               + "/forwarding-profile-identifier/id";
+                          }
+                          description
+                            "Reference to a forwarding profile (e.g., an ACL)
+                             that is applied to the VPN network access.";
+                        }
+                      }
                     }
                   }
                 }
