@@ -870,6 +870,16 @@ module ietf-l2vpn-ntw {
                     "Points to a global profile defined at the
                      service level.";
                 }
+                uses vpn-common:route-distinguisher {
+                  description
+                    "An RD configured here overrides the RD of the
+                     referenced global parameters profile for this
+                     VPN node.  This allows a common profile to be
+                     shared by all VPN nodes while only the RD
+                     changes per node.  If an RD is also configured
+                     under 'bgp-auto-discovery' of the VPN node, the
+                     RD under 'bgp-auto-discovery' takes precedence.";
+                }
                 uses parameters-profile;
               }
             }

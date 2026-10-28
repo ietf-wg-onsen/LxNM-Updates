@@ -103,7 +103,7 @@ Implementations of LxNM models in controllers required new functionalities which
 * EVPN remote and local eth-tag (GitHub issue #6)
   + The current L2NM does not provide a way to express distinct local and remote eth-tag values per AC under the BGP-EVPN configuration.
 
-* Explicit assignment of an RD at node level (GitHub issue #7)
+* Explicit assignment of an RD at node level (GitHub issue #9)
   + In the current model, a Route Distinguisher (RD) must always be assigned via a profile at the
     service level. It is useful to be able to set an explicit RD directly at the node level,
     overriding the value of the profile. This allows a common profile to be used across all
@@ -116,7 +116,7 @@ Implementations of LxNM models in controllers required new functionalities which
    interfaces into a single EVPN-VPWS service tunnel and still providing
    Single-Active and All-Active multi-homing.
 
-* Explanatory text for EVPN multihoming using LAG (GitHub issue #9)
+* Explanatory text for EVPN multihoming using LAG (GitHub issue #<check here -- was #9, which is the RD at node level issue; possibly #7>)
   + The L2NM allows a lag-interface-id to be configured per VPN network access, but does not
     currently document how this identifier is used to associate the LAG members across PEs that
     belong to the same multihoming group.
