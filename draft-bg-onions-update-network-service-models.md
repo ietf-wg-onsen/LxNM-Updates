@@ -87,11 +87,11 @@ Implementations of LxNM models in controllers required new functionalities which
 * BFD parametrization of static routes (Github issue #1):
     +  The L3NM Yang data model allows to manage static routes in a VPN. That is, for a particular VPN service, new Pv4 and IPv6 static routes can be added, modified or deleted. The data model allows to specify whether BFD is desired in the static route. Whenever a controller derives the device configuration of the static route it will need to decide a particular BFD configuration, typically from a pre-defined template. Operators required, for different services, to customize the main BFD parameters to allow, for example, faster detection for critical services. The new requirement is the ability to specify BFD intended configuration in the IPv4 and IPv6 static routes, including a required-min-rx-interval and multiplier.
 * Management of VLAN 0 in tagged interfaces (Github issue #2): LxNM Yang models have a range defined for cvlan between 1 and 4094. VLAN 0 should also be supported and is used in deployments.
-* Missing BGP intended configuration blocks (in relation to Attachment Circuits) (Github issue #3).
+* Missing BGP intended configuration blocks (in relation to Attachment Circuits) (Github issue #5).
     + There are a set of BGP configuration blocks required to manage BGP based services which are present now in the AC-Model but not in the L3NM:
         - BGP Peer group creation
         - BGP Redistribution rules
-    + Missing pointer to ACL (also present in Github issue #3).
+    + Missing pointer to ACL (also present in Github issue #5).
         - ACL pointer to attach forwarding filter
 * SRv6 support for L3VPN (Github issue #15): SRv6-based BGP services including L3VPN, whose procedures are defined in {{?RFC9252}}
 * Improving Multicast Support:
