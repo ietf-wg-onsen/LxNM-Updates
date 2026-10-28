@@ -54,6 +54,24 @@ TODO Introduction
 
 {::boilerplate bcp14-tagged}
 
+# Changes Inherited from the VPN Common Module
+
+## Multiple Routing Policies
+
+   The L2NM {{?RFC9291}} uses the `vpn-route-targets` grouping of the
+   `ietf-vpn-common` module {{!RFC9181}} to associate import and
+   export routing policies with a VPN service and a VPN node. The
+   revision of `ietf-vpn-common` changes `import-policy` and
+   `export-policy` from a single `leaf` to a user-ordered
+   `leaf-list` (GitHub issue #23), so that multiple routing policies
+   can be applied in the order listed.
+
+   The L2NM inherits this change without modifying the
+   `ietf-l2vpn-ntw` module. As with the L3NM, the change is not
+   backward compatible in the strict YANG sense ({{?RFC7950}},
+   Section 11): clients MUST encode these nodes as a list, even when
+   only one policy is configured.
+
 # Operational Considerations
 
 TBC per {{?I-D.opsarea-rfc5706bis}}.

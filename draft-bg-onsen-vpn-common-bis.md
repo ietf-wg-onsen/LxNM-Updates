@@ -55,6 +55,30 @@ TODO Introduction
 
 {::boilerplate bcp14-tagged}
 
+# Changes to the VPN Common Module
+
+## Multiple Routing Policies
+
+   The `vpn-route-targets` grouping defined in {{!RFC9181}} includes
+   a `vpn-policies` container with two leaves, `import-policy` and
+   `export-policy`. Each leaf is defined as a single `string`, which
+   restricts the operator to referencing exactly one routing policy
+   per direction (GitHub issue #23).
+
+   Network devices commonly support an ordered list of import and
+   export routing policies per VRF, evaluated in the order in which
+   they are listed. This revision changes `import-policy` and
+   `export-policy` from `leaf` to `leaf-list`, with `ordered-by user`
+   so that the order provided by the client is the order in which
+   the policies are applied.
+
+   Both the L3NM {{?RFC9182}} and the L2NM {{?RFC9291}} use the
+   `vpn-route-targets` grouping and inherit this change. This change
+   is not backward compatible in the strict YANG sense ({{?RFC7950}},
+   Section 11), as the cardinality of the nodes changes from a single
+   value to a list. Existing single-value configurations can be
+   expressed as a one-element list without semantic loss.
+
 # Operational Considerations
 
 TBC per {{?I-D.opsarea-rfc5706bis}}.

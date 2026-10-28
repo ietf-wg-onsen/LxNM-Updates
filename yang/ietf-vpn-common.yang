@@ -1936,15 +1936,19 @@ module ietf-vpn-common {
         "VPN service policies.  'vpn-policies' contains references
          to the import and export policies to be associated with
          the VPN service.";
-      leaf import-policy {
+      leaf-list import-policy {
         type string;
+        ordered-by user;
         description
-          "Identifies the import policy.";
+          "A client-ordered list of import policies.  The policies
+           are applied in the order in which they are listed.";
       }
-      leaf export-policy {
+      leaf-list export-policy {
         type string;
+        ordered-by user;
         description
-          "Identifies the export policy.";
+          "A client-ordered list of export policies.  The policies
+           are applied in the order in which they are listed.";
       }
     }
   }

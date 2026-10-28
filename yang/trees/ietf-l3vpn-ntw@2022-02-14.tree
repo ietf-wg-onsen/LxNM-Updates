@@ -73,8 +73,8 @@ module: ietf-l3vpn-ntw
            |     |  |  |  +--rw route-target-type
            |     |  |  |          rt-types:route-target-type
            |     |  |  +--rw vpn-policies
-           |     |  |     +--rw import-policy?   string
-           |     |  |     +--rw export-policy?   string
+           |     |  |     +--rw import-policy*   string
+           |     |  |     +--rw export-policy*   string
            |     |  +--rw maximum-routes* [protocol]
            |     |     +--rw protocol          identityref
            |     |     +--rw maximum-routes?   uint32
@@ -207,8 +207,8 @@ module: ietf-l3vpn-ntw
                  |     |  |  |  +--rw route-target-type
                  |     |  |  |          rt-types:route-target-type
                  |     |  |  +--rw vpn-policies
-                 |     |  |     +--rw import-policy?   string
-                 |     |  |     +--rw export-policy?   string
+                 |     |  |     +--rw import-policy*   string
+                 |     |  |     +--rw export-policy*   string
                  |     |  +--rw maximum-routes* [protocol]
                  |     |     +--rw protocol          identityref
                  |     |     +--rw maximum-routes?   uint32
@@ -997,8 +997,8 @@ module: ietf-l3vpn-ntw
     |  |  |  |  +-- route-target    rt-types:route-target
     |  |  |  +-- route-target-type    rt-types:route-target-type
     |  |  +-- vpn-policies
-    |  |     +-- import-policy?   string
-    |  |     +-- export-policy?   string
+    |  |     +-- import-policy*   string
+    |  |     +-- export-policy*   string
     |  +-- maximum-routes* [protocol]
     |     +-- protocol          identityref
     |     +-- maximum-routes?   uint32
