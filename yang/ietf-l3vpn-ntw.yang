@@ -206,8 +206,13 @@ module ietf-l3vpn-ntw {
   grouping bgp-peer-group {
     description
       "BGP session parameters that can be shared by a set of
-       BGP neighbors (i.e., a BGP peer group) or configured
-       for the BGP neighbors of a VPN network access.";
+       BGP neighbors (i.e., a BGP peer group), configured for
+       the BGP neighbors of a VPN network access, or configured
+       for a specific BGP neighbor.
+
+       This grouping does not define default values, so that a
+       parameter that is not configured at a given level can be
+       inherited from another level.";
     leaf local-as {
       type inet:as-number;
       description
@@ -251,7 +256,6 @@ module ietf-l3vpn-ntw {
     }
     leaf as-override {
       type boolean;
-      default "false";
       description
         "Defines whether ASN override is
          enabled, i.e., replacing the ASN of
@@ -260,7 +264,6 @@ module ietf-l3vpn-ntw {
     }
     leaf allow-own-as {
       type uint8;
-      default "0";
       description
         "If set, specifies the maximum number of
          occurrences of the provider's ASN that
@@ -269,7 +272,6 @@ module ietf-l3vpn-ntw {
     }
     leaf prepend-global-as {
       type boolean;
-      default "false";
       description
         "In some situations, the ASN that is
          provided at the VPN node level may be
@@ -287,7 +289,6 @@ module ietf-l3vpn-ntw {
     }
     leaf send-default-route {
       type boolean;
-      default "false";
       description
         "Defines whether default routes can be
          advertised to a peer.  If set, the
@@ -385,7 +386,6 @@ module ietf-l3vpn-ntw {
          maximum is reached.";
       leaf max-prefix {
         type uint32;
-        default "5000";
         description
           "Indicates the maximum number of BGP
            prefixes allowed in the BGP session.
@@ -407,7 +407,6 @@ module ietf-l3vpn-ntw {
           range "0..100";
         }
         units "percent";
-        default "75";
         description
           "When this value is reached, a warning
            notification will be triggered.";
@@ -456,7 +455,6 @@ module ietf-l3vpn-ntw {
           range "0..21845";
         }
         units "seconds";
-        default "30";
         description
           "This timer indicates the KEEPALIVE
            messages' frequency between a PE
@@ -478,7 +476,6 @@ module ietf-l3vpn-ntw {
           range "0 | 3..65535";
         }
         units "seconds";
-        default "90";
         description
           "Indicates the maximum number of
            seconds that may elapse between the
@@ -498,7 +495,6 @@ module ietf-l3vpn-ntw {
          parameters between a PE and a CE.";
       leaf enable {
         type boolean;
-        default "false";
         description
           "Enables or disables authentication.";
       }
@@ -2033,10 +2029,10 @@ module ietf-l3vpn-ntw {
                           "Only applies when the protocol is
                            BGP.";
                       }
-                      must "peer-as or peer-group" {
+                      must "not(neighbor) or peer-as" {
                         error-message
-                          "Either 'peer-as' or a BGP peer group must be
-                           provided.";
+                          "'peer-as' must be provided when the
+                           deprecated 'neighbor' leaf-list is used.";
                       }
                       description
                         "Configuration specific to BGP.";
@@ -2051,32 +2047,102 @@ module ietf-l3vpn-ntw {
                            of the description is local to an
                            implementation.";
                       }
-                      leaf peer-group {
-                        type string;
-                        must "../../../../../../peer-groups/peer-group[name = current()]"
-                           + " or ../../../../../../../../peer-groups"
-                           + "/peer-group[name = current()]" {
-                          error-message
-                            "The BGP peer group must be defined at the VPN
-                             node or the VPN service level.";
-                        }
-                        description
-                          "The BGP peer group to which the BGP neighbors of
-                           this VPN network access belong.  The peer group
-                           is first looked up at the VPN node level, then at
-                           the VPN service level.  A parameter configured
-                           in this container overrides the value of the
-                           peer group.";
-                      }
                       leaf-list neighbor {
                         type inet:ip-address;
+                        status deprecated;
                         description
                           "IP address(es) of the BGP neighbor.
                            IPv4 and IPv6 neighbors may be
                            indicated if two sessions will be used
-                           for IPv4 and IPv6.";
+                           for IPv4 and IPv6.
+
+                           This leaf-list is deprecated in favor of
+                           'neighbors', which allows a BGP peer group
+                           and specific BGP parameters to be
+                           associated with each neighbor.";
                       }
-                      uses bgp-peer-group;
+                      container neighbors {
+                        description
+                          "Container for the BGP neighbors of the VPN
+                           network access.";
+                        list neighbor {
+                          must "peer-as or ../../peer-as"
+                             + " or peer-group" {
+                            error-message
+                              "The peer ASN must be provided for the
+                               neighbor, for the VPN network access, or
+                               by a BGP peer group.";
+                          }
+                          key "remote-address";
+                          description
+                            "List of BGP neighbors.  A parameter
+                             configured for a neighbor overrides the
+                             value of its BGP peer group, which in
+                             turn overrides the value configured in
+                             the 'bgp' container of the VPN network
+                             access.";
+                          leaf remote-address {
+                            type inet:ip-address;
+                            description
+                              "The IP address of the BGP neighbor.";
+                          }
+                          leaf description {
+                            type string;
+                            description
+                              "Textual description of the BGP
+                               neighbor.";
+                          }
+                          leaf peer-group {
+                            type string;
+                            must "../../../../../../../../"
+                               + "peer-groups/peer-group"
+                               + "[name = current()]"
+                               + " or ../../../../../../../../../../"
+                               + "peer-groups/peer-group"
+                               + "[name = current()]" {
+                              error-message
+                                "The BGP peer group must be defined at
+                                 the VPN node or the VPN service
+                                 level.";
+                            }
+                            description
+                              "The BGP peer group of the neighbor.
+                               The peer group is first looked up at
+                               the VPN node level, then at the VPN
+                               service level.";
+                          }
+                          uses bgp-peer-group;
+                        }
+                      }
+                      uses bgp-peer-group {
+                        refine "as-override" {
+                          default "false";
+                        }
+                        refine "allow-own-as" {
+                          default "0";
+                        }
+                        refine "prepend-global-as" {
+                          default "false";
+                        }
+                        refine "send-default-route" {
+                          default "false";
+                        }
+                        refine "bgp-max-prefix/max-prefix" {
+                          default "5000";
+                        }
+                        refine "bgp-max-prefix/warning-threshold" {
+                          default "75";
+                        }
+                        refine "bgp-timers/keepalive" {
+                          default "30";
+                        }
+                        refine "bgp-timers/hold-time" {
+                          default "90";
+                        }
+                        refine "authentication/enable" {
+                          default "false";
+                        }
+                      }
                       uses vpn-common:service-status;
                     }
                     container ospf {
@@ -3159,20 +3225,21 @@ module ietf-l3vpn-ntw {
                   }
                   container access-control-list {
                     description
-                      "Container for the Access Control Lists (ACLs) to apply
-                       to the VPN network access.";
+                      "Container for the Access Control Lists (ACLs)
+                       to apply to the VPN network access.";
                     container acl-profiles {
                       description
                         "Container for the ACL profiles.";
                       list acl-profile {
                         key "forwarding-profile-ref";
                         description
-                          "List of ACL profiles to apply to the VPN network
-                           access.  Each ACL profile is a forwarding profile
-                           that is defined by the service provider.";
+                          "List of ACL profiles to apply to the VPN
+                           network access.  Each ACL profile is a
+                           forwarding profile that is defined by the
+                           service provider.";
                         reference
-                          "RFC 9835: A Network YANG Data Model for Attachment
-                                     Circuits, Section 5.9";
+                          "RFC 9835: A Network YANG Data Model for
+                                     Attachment Circuits, Section 5.9";
                         leaf forwarding-profile-ref {
                           type leafref {
                             path "/l3vpn-ntw/vpn-profiles"
@@ -3180,8 +3247,9 @@ module ietf-l3vpn-ntw {
                                + "/forwarding-profile-identifier/id";
                           }
                           description
-                            "Reference to a forwarding profile (e.g., an ACL)
-                             that is applied to the VPN network access.";
+                            "Reference to a forwarding profile (e.g.,
+                             an ACL) that is applied to the VPN
+                             network access.";
                         }
                       }
                     }

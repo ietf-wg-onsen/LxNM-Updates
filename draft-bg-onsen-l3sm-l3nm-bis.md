@@ -242,31 +242,42 @@ This document has no IANA actions.
    data nodes are optional, and the existing data nodes keep their
    semantics.
 
-### BGP Peer Groups
+### BGP Peer Groups and Per-Neighbor Configuration
 
    In the L3NM {{?RFC9182}}, the BGP parameters of a VPN network access
    (e.g., `peer-as`, `bgp-timers`, or `authentication`) apply to all
-   the neighbors listed in `neighbor`. There is no way to define a set
-   of BGP parameters once and reuse it across several VPN network
-   accesses, as BGP peer groups allow on network devices.
+   the neighbors listed in the `neighbor` leaf-list. There is no way to
+   define a set of BGP parameters once and reuse it across several VPN
+   network accesses, as BGP peer groups allow on network devices, nor
+   to associate different parameters with different neighbors of the
+   same VPN network access.
 
-   This revision introduces:
+   Using several `routing-protocol` entries of type `bgp-routing` on
+   the same VPN network access is not a suitable workaround, as network
+   devices typically have a single BGP instance per VRF, in which
+   neighbors are associated with peer groups.
+
+   Aligned with {{?RFC9835}}, this revision introduces:
 
    * A new grouping, `bgp-peer-group`, that contains the BGP session
-     parameters of a VPN network access as defined in {{?RFC9182}}. The
-     `bgp` container of the VPN network access uses this grouping, so
-     the data nodes of that container are unchanged, except that
-     `peer-as` is no longer mandatory when a peer group is used (see
-     below).
+     parameters of a VPN network access as defined in {{?RFC9182}}.
+     This grouping does not define default values, so that a parameter
+     that is not configured at a given level can be inherited from
+     another level. The `bgp` container of the VPN network access uses
+     this grouping and refines it with the default values of
+     {{?RFC9182}}, so the behavior of that container is unchanged.
    * A `peer-groups` container, with a list of named peer groups,
      both at the VPN service level and at the VPN node level. Peer
      groups defined at the VPN service level can be reused by all the
      VPN nodes of the service. A peer group defined at the VPN node
      level overrides a peer group with the same name defined at the
      VPN service level.
-   * A `peer-group` leaf in the `bgp` container of the VPN network
-     access, which references the peer group to which the BGP
-     neighbors of the VPN network access belong.
+   * A `neighbors` container in the `bgp` container of the VPN network
+     access, with a list of BGP neighbors keyed by `remote-address`.
+     Each neighbor can reference a peer group (`peer-group`) and can
+     override any BGP parameter of the `bgp-peer-group` grouping.
+   * The `neighbor` leaf-list of {{?RFC9182}} is deprecated in favor of
+     the `neighbors` list.
 
 ~~~
   +--rw vpn-service* [vpn-id]
@@ -293,34 +304,50 @@ This document has no IANA actions.
                        ...
                        +--rw bgp
                           +--rw description?   string
-                          +--rw peer-group?    string
-                          +--rw neighbor*      inet:ip-address
+                          x--rw neighbor*      inet:ip-address
+                          +--rw neighbors
+                          |  +--rw neighbor* [remote-address]
+                          |     +--rw remote-address   inet:ip-address
+                          |     +--rw description?     string
+                          |     +--rw peer-group?      string
+                          |     +--rw local-as?        inet:as-number
+                          |     +--rw peer-as?         inet:as-number
+                          |     ...
                           +--rw local-as?      inet:as-number
                           +--rw peer-as?       inet:as-number
                           ...
 ~~~
 
-   The value of a BGP parameter for the neighbors of a VPN network
-   access is determined as follows:
+   The value of a BGP parameter for a neighbor listed in `neighbors` is
+   determined as follows:
 
-   1. If the parameter is configured in the `bgp` container of the
-      VPN network access, that value is used.
-   2. Otherwise, if the referenced peer group is defined at the VPN
-      node level, the value of that peer group is used.
-   3. Otherwise, the value of the peer group defined at the VPN
-      service level is used.
+   1. If the parameter is configured for the neighbor, that value is
+      used.
+   2. Otherwise, if the peer group of the neighbor is defined at the
+      VPN node level and the parameter is configured in that peer
+      group, that value is used.
+   3. Otherwise, if the peer group of the neighbor is defined at the
+      VPN service level and the parameter is configured in that peer
+      group, that value is used.
+   4. Otherwise, the value of the `bgp` container of the VPN network
+      access (including its default values) is used.
 
-   Either `peer-as` or `peer-group` has to be provided in the `bgp`
-   container of a VPN network access.
+   The peer ASN has to be provided for each neighbor, either directly,
+   in the `bgp` container of the VPN network access, or by the peer
+   group of the neighbor. The neighbors listed in the deprecated
+   `neighbor` leaf-list keep the semantics of {{?RFC9182}}: they use
+   the parameters of the `bgp` container of the VPN network access,
+   and `peer-as` is required in that case.
 
    <check here -- in {{?RFC9182}}, `peer-as` is mandatory in the
-   VPN network access. This revision relaxes it to allow `peer-as` to
-   be inherited from a peer group. Confirm that the WG agrees with
-   this approach.>
+   VPN network access. This revision relaxes it to allow the peer ASN
+   to be provided per neighbor or by a peer group. Confirm that the WG
+   agrees with this approach.>
 
-   For example, the following JSON fragment defines a peer group at the
-   VPN service level and uses it on a VPN network access, overriding
-   only the BGP neighbor:
+   For example, the following JSON fragment defines two peer groups at
+   the VPN service level and associates a different peer group with
+   each neighbor of a VPN network access. The second neighbor also
+   overrides the BGP hold time of its peer group:
 
 ~~~ json
 "peer-groups": {
@@ -333,6 +360,11 @@ This document has no IANA actions.
         "keepalive": 10,
         "hold-time": 30
       }
+    },
+    {
+      "name": "CE-SILVER",
+      "peer-as": 65020,
+      "address-family": "vpn-common:ipv4"
     }
   ]
 },
@@ -342,8 +374,21 @@ This document has no IANA actions.
     "id": "1",
     "type": "vpn-common:bgp-routing",
     "bgp": {
-      "peer-group": "CE-GOLD",
-      "neighbor": ["192.0.2.2"]
+      "neighbors": {
+        "neighbor": [
+          {
+            "remote-address": "192.0.2.2",
+            "peer-group": "CE-GOLD"
+          },
+          {
+            "remote-address": "192.0.2.6",
+            "peer-group": "CE-SILVER",
+            "bgp-timers": {
+              "hold-time": 60
+            }
+          }
+        ]
+      }
     }
   }
 ]
@@ -357,11 +402,12 @@ This document has no IANA actions.
    routes learned from an IGP, optionally filtered by a routing policy.
 
    This revision adds a `redistribute` list to the `bgp-peer-group`
-   grouping. Therefore, it is available both in the BGP peer groups and
-   in the `bgp` container of a VPN network access. Each entry
-   identifies a routing protocol (using the `routing-protocol-type`
-   identities of {{!RFC9181}}) and an address family, and can reference
-   a routing policy to apply to the redistributed routes:
+   grouping. Therefore, it is available in the BGP peer groups, in the
+   `bgp` container of a VPN network access, and for each BGP neighbor.
+   Each entry identifies a routing protocol (using the
+   `routing-protocol-type` identities of {{!RFC9181}}) and an address
+   family, and can reference a routing policy to apply to the
+   redistributed routes:
 
 ~~~
   +--rw redistribute-connected* [address-family]

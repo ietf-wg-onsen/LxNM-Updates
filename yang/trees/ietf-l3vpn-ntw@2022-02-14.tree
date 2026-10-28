@@ -593,10 +593,87 @@ module: ietf-l3vpn-ntw
                        |     +--rw bgp
                        |     |  +--rw description?
                        |     |  |       string
-                       |     |  +--rw peer-group?
-                       |     |  |       string
-                       |     |  +--rw neighbor*
+                       |     |  x--rw neighbor*
                        |     |  |       inet:ip-address
+                       |     |  +--rw neighbors
+                       |     |  |  +--rw neighbor* [remote-address]
+                       |     |  |     +--rw remote-address
+                       |     |  |     |       inet:ip-address
+                       |     |  |     +--rw description?
+                       |     |  |     |       string
+                       |     |  |     +--rw peer-group?
+                       |     |  |     |       string
+                       |     |  |     +--rw local-as?
+                       |     |  |     |       inet:as-number
+                       |     |  |     +--rw peer-as?
+                       |     |  |     |       inet:as-number
+                       |     |  |     +--rw address-family?
+                       |     |  |     |       identityref
+                       |     |  |     +--rw local-address?
+                       |     |  |     |       union
+                       |     |  |     +--rw multihop?
+                       |     |  |     |       uint8
+                       |     |  |     +--rw as-override?
+                       |     |  |     |       boolean
+                       |     |  |     +--rw allow-own-as?
+                       |     |  |     |       uint8
+                       |     |  |     +--rw prepend-global-as?
+                       |     |  |     |       boolean
+                       |     |  |     +--rw send-default-route?
+                       |     |  |     |       boolean
+                       |     |  |     +--rw site-of-origin?
+                       |     |  |     |       rt-types:route-origin
+                       |     |  |     +--rw ipv6-site-of-origin?
+                       |     |  |     |       rt-types:ipv6-route-origin
+                       |     |  |     +--rw redistribute-connected*
+                       |     |  |     |       [address-family]
+                       |     |  |     |  +--rw address-family
+                       |     |  |     |  |       identityref
+                       |     |  |     |  +--rw enable?
+                       |     |  |     |          boolean
+                       |     |  |     +--rw redistribute*
+                       |     |  |     |       [protocol address-family]
+                       |     |  |     |  +--rw protocol
+                       |     |  |     |  |       identityref
+                       |     |  |     |  +--rw address-family
+                       |     |  |     |  |       identityref
+                       |     |  |     |  +--rw policy?
+                       |     |  |     |          string
+                       |     |  |     +--rw bgp-max-prefix
+                       |     |  |     |  +--rw max-prefix?
+                       |     |  |     |  |       uint32
+                       |     |  |     |  +--rw warning-threshold?
+                       |     |  |     |  |       decimal64
+                       |     |  |     |  +--rw violate-action?
+                       |     |  |     |  |       enumeration
+                       |     |  |     |  +--rw restart-timer?
+                       |     |  |     |          uint32
+                       |     |  |     +--rw bgp-timers
+                       |     |  |     |  +--rw keepalive?   uint16
+                       |     |  |     |  +--rw hold-time?   uint16
+                       |     |  |     +--rw authentication
+                       |     |  |        +--rw enable?
+                       |     |  |        |       boolean
+                       |     |  |        +--rw keying-material
+                       |     |  |           +--rw (option)?
+                       |     |  |              +--:(ao)
+                       |     |  |              |  +--rw enable-ao?
+                       |     |  |              |  |       boolean
+                       |     |  |              |  +--rw ao-keychain?
+                       |     |  |              |          key-chain:key-chain-ref
+                       |     |  |              +--:(md5)
+                       |     |  |              |  +--rw md5-keychain?
+                       |     |  |              |          key-chain:key-chain-ref
+                       |     |  |              +--:(explicit)
+                       |     |  |              |  +--rw key-id?
+                       |     |  |              |  |       uint32
+                       |     |  |              |  +--rw key?
+                       |     |  |              |  |       string
+                       |     |  |              |  +--rw crypto-algorithm?
+                       |     |  |              |          identityref
+                       |     |  |              +--:(ipsec)
+                       |     |  |                 +--rw sa?
+                       |     |  |                         string
                        |     |  +--rw local-as?
                        |     |  |       inet:as-number
                        |     |  +--rw peer-as?
