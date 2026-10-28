@@ -26,6 +26,15 @@
         ]
       },
       {
+        "name": "ietf-l2vpn-ntw",
+        "namespace": "urn:ietf:params:xml:ns:yang:ietf-l2vpn-ntw",
+        "revision": "2022-09-20",
+        "conformance-type": "implement",
+        "feature": [
+          "oam-3ah"
+        ]
+      },
+      {
         "name": "ietf-l3vpn-ntw",
         "namespace": "urn:ietf:params:xml:ns:yang:ietf-l3vpn-ntw",
         "revision": "2022-02-14",

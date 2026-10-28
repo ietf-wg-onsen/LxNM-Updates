@@ -67,6 +67,188 @@ TODO Security
 
 This document has no IANA actions.
 
+# Overall Structure of the Enhanced L2NM Module
+
+## Explicit RD Assignment at the VPN Node Level
+
+   In the L2NM {{?RFC9291}}, a Route Distinguisher (RD) can be
+   provided in two places:
+
+   * In a global parameters profile ('global-parameters-profile')
+     defined at the VPN service level. A VPN node activates one or
+     more of these profiles through
+     'active-global-parameters-profiles', but cannot override the RD
+     of the profile.
+   * Under the 'bgp-auto-discovery' container of a VPN node. This
+     container only applies when BGP auto-discovery is enabled for
+     the service ('bgp-ad-enabled' set to 'true').
+
+   As a consequence, when BGP auto-discovery is not used, the only way
+   to assign a different RD per VPN node is to define one global
+   parameters profile per node. Operators have requested the ability
+   to set an explicit RD directly at the node level, overriding the
+   value of the profile (GitHub issue #9). This allows a common
+   profile to be used across all services for use cases where only
+   the RD changes per node.
+
+   This revision adds the 'route-distinguisher' grouping of the
+   'ietf-vpn-common' module {{!RFC9181}} to the list of active global
+   parameters profiles of a VPN node, next to the other parameters
+   that a VPN node can already override (e.g.,
+   'local-autonomous-system' or 'svc-mtu'):
+
+~~~
+  +--rw vpn-node* [vpn-node-id]
+     ...
+     +--rw active-global-parameters-profiles
+     |  +--rw global-parameters-profile* [profile-id]
+     |     +--rw profile-id                  leafref
+     |     +--rw (rd-choice)?
+     |     |  +--:(directly-assigned)
+     |     |  |  +--rw rd?
+     |     |  |          rt-types:route-distinguisher
+     |     |  +--:(directly-assigned-suffix)
+     |     |  |  +--rw rd-suffix?            uint16
+     |     |  +--:(auto-assigned)
+     |     |  |  ...
+     |     |  +--:(auto-assigned-suffix)
+     |     |  |  ...
+     |     |  +--:(no-rd)
+     |     |     +--rw no-rd?                empty
+     |     +--rw local-autonomous-system?
+     |     |       inet:as-number
+     |     ...
+~~~
+
+   The RD is resolved for a VPN node as follows:
+
+   1. If BGP auto-discovery is enabled and an RD is configured under
+      'bgp-auto-discovery' of the VPN node, that RD is used.
+   2. Otherwise, if an RD is configured for the active global
+      parameters profile of the VPN node, that RD is used.
+   3. Otherwise, the RD of the global parameters profile defined at
+      the VPN service level is used.
+
+   <check here -- confirm the precedence between the RD under
+   'bgp-auto-discovery' and the new node-level override. The
+   'bgp-auto-discovery' RD is given precedence here because it is the
+   more specific configuration when BGP auto-discovery is used.>
+
+   For example, the following JSON fragment defines a common profile
+   at the service level and overrides only the RD on each VPN node:
+
+~~~ json
+"global-parameters-profiles": {
+  "global-parameters-profile": [
+    {
+      "profile-id": "common-profile",
+      "rd-suffix": 1,
+      "svc-mtu": 1514
+    }
+  ]
+},
+"vpn-nodes": {
+  "vpn-node": [
+    {
+      "vpn-node-id": "pe1",
+      "ne-id": "pe1.example.com",
+      "active-global-parameters-profiles": {
+        "global-parameters-profile": [
+          {
+            "profile-id": "common-profile",
+            "rd": "0:65000:101"
+          }
+        ]
+      }
+    },
+    {
+      "vpn-node-id": "pe2",
+      "ne-id": "pe2.example.com",
+      "active-global-parameters-profiles": {
+        "global-parameters-profile": [
+          {
+            "profile-id": "common-profile",
+            "rd": "0:65000:102"
+          }
+        ]
+      }
+    }
+  ]
+}
+~~~
+
+   This change is backward compatible: the new nodes are optional,
+   and existing clients that do not populate them continue to obtain
+   the RD from the global parameters profile, as per {{?RFC9291}}.
+
+## EVI Identifier at the VPN Node Level
+
+   An EVPN Instance (EVI) {{?RFC7432}} maps a specific EVPN service
+   (e.g., a Layer 2 VPN bridging a particular VLAN across the EVPN
+   fabric) to an EVPN instance configured on each PE. Implementations
+   commonly identify the EVI with a numeric value that is configured
+   per PE and that may be used to auto-derive the RD and RTs of the
+   EVPN instance.
+
+   The L2NM {{?RFC9291}} does not include an EVI identifier. The
+   'vpn-id' of the VPN service identifies the service across the
+   network, and the 'vpn-id' under 'bgp-auto-discovery' only applies
+   to BGP-based L2VPN (VPLS/VPWS) {{?RFC6624}}. Neither of them can be
+   used to express the EVI of a given PE, whose value does not need
+   to be equal to the VPN service identifier (GitHub issue #22).
+
+   This revision adds an 'evi' leaf to the EVPN signaling options of
+   the VPN node:
+
+~~~
+  +--rw vpn-node* [vpn-node-id]
+     ...
+     +--rw signaling-option
+     |  ...
+     |  +--rw (signaling-option)?
+     |     +--:(bgp)
+     |     |  +--rw (bgp-type)?
+     |     |     +--:(l2vpn-bgp)
+     |     |     |  ...
+     |     |     +--:(evpn-bgp)
+     |     |        +--rw evpn-type?                leafref
+     |     |        +--rw evi?                      uint32
+     |     |        +--rw service-interface-type?   identityref
+     |     |        ...
+~~~
+
+   The 'evi' leaf is defined as a 'uint32' because the supported
+   range of EVI values is implementation specific.
+   <check here -- confirm whether a range should be enforced in the
+   model, e.g., "1..16777215" (24 bits).>
+
+   For example, the following JSON fragment assigns EVI 1001 to the
+   EVPN instance of a VPN service on two PEs:
+
+~~~ json
+"vpn-nodes": {
+  "vpn-node": [
+    {
+      "vpn-node-id": "pe1",
+      "ne-id": "pe1.example.com",
+      "signaling-option": {
+        "evi": 1001
+      }
+    },
+    {
+      "vpn-node-id": "pe2",
+      "ne-id": "pe2.example.com",
+      "signaling-option": {
+        "evi": 1001
+      }
+    }
+  ]
+}
+~~~
+
+   This change is backward compatible: the 'evi' leaf is optional,
+   and existing clients that do not populate it are not affected.
+
 
 --- back
 
