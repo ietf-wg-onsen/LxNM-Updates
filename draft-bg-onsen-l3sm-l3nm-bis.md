@@ -439,15 +439,62 @@ This document has no IANA actions.
    Similar to Section 5.9 of {{?RFC9835}}, this revision adds an
    `access-control-list` container to the `service` container of the
    VPN network access. It includes a list of ACL profiles, each of
-   which references a forwarding profile:
+   which references a forwarding profile and indicates the direction
+   of the traffic to which it applies:
 
 ~~~
-  +--rw service
+  +--rw vpn-network-access* [id]
      ...
-     +--rw access-control-list
-        +--rw acl-profiles
-           +--rw acl-profile* [forwarding-profile-ref]
-              +--rw forwarding-profile-ref    leafref
+     +--rw service
+        ...
+        +--rw access-control-list
+           +--rw acl-profiles
+              +--rw acl-profile* [forwarding-profile-ref]
+                 +--rw forwarding-profile-ref    leafref
+                 +--rw direction?                enumeration
+~~~
+
+   The `direction` leaf takes one of the following values:
+
+   * `site-to-wan`: From the customer site to the provider's network
+     (typically CE to PE, i.e., inbound on the PE).
+   * `wan-to-site`: From the provider's network to the customer site
+     (typically PE to CE, i.e., outbound on the PE).
+   * `both`: Both directions. This is the default value.
+
+   These values are the same as those used for the QoS profiles of the
+   VPN network access. They are defined as an enumeration in the
+   `ietf-l3vpn-ntw` module because the `qos-profile-direction`
+   identities of {{!RFC9181}} depend on the `qos` feature.
+
+   <check here -- consider defining a generic direction identity in
+   the `ietf-vpn-common` module, usable by both QoS and ACL
+   profiles.>
+
+   The `acl-profile` list is ordered by the user: when several ACL
+   profiles apply to the same direction, they are evaluated in the
+   order in which they are listed.
+
+   For example, the following JSON fragment applies an inbound ACL
+   profile and an ACL profile in both directions to a VPN network
+   access:
+
+~~~ json
+"service": {
+  "access-control-list": {
+    "acl-profiles": {
+      "acl-profile": [
+        {
+          "forwarding-profile-ref": "ACL-ANTI-SPOOFING",
+          "direction": "site-to-wan"
+        },
+        {
+          "forwarding-profile-ref": "ACL-MGMT-PROTECT"
+        }
+      ]
+    }
+  }
+}
 ~~~
 
    The definition of the ACLs themselves is out of the scope of the

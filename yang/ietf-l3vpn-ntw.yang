@@ -3232,11 +3232,14 @@ module ietf-l3vpn-ntw {
                         "Container for the ACL profiles.";
                       list acl-profile {
                         key "forwarding-profile-ref";
+                        ordered-by user;
                         description
                           "List of ACL profiles to apply to the VPN
                            network access.  Each ACL profile is a
                            forwarding profile that is defined by the
-                           service provider.";
+                           service provider.  ACL profiles that apply
+                           to the same direction are evaluated in the
+                           order in which they are listed.";
                         reference
                           "RFC 9835: A Network YANG Data Model for
                                      Attachment Circuits, Section 5.9";
@@ -3250,6 +3253,33 @@ module ietf-l3vpn-ntw {
                             "Reference to a forwarding profile (e.g.,
                              an ACL) that is applied to the VPN
                              network access.";
+                        }
+                        leaf direction {
+                          type enumeration {
+                            enum site-to-wan {
+                              description
+                                "From the customer site to the
+                                 provider's network.  This is
+                                 typically the CE-to-PE direction
+                                 (i.e., inbound on the PE).";
+                            }
+                            enum wan-to-site {
+                              description
+                                "From the provider's network to the
+                                 customer site.  This is typically
+                                 the PE-to-CE direction (i.e.,
+                                 outbound on the PE).";
+                            }
+                            enum both {
+                              description
+                                "Both the site-to-WAN and the
+                                 WAN-to-site directions.";
+                            }
+                          }
+                          default "both";
+                          description
+                            "The direction of the traffic to which
+                             the ACL profile is applied.";
                         }
                       }
                     }
